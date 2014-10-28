@@ -31,14 +31,15 @@ Recall that Manatee is a cluster of three or more postgres instances such that:
   before transactions are committed.
 * If possible, the system automatically reconfigures itself after any
   combination of failures (of peers, the ZK cluster, or the underlying network)
-  to maximize uptime and to never lose data without operator intervention.
+  to maximize uptime and to never lose data.
 
 Any configuration of three or more peers can use the algorithm described here.
 Manatee can be operated in single-peer mode, but that's uninteresting because it
 cannot survive any failures and the state machine is trivial: always behave as
-primary.  Two-peer mode does not make sense with this algorithm because you
-could never takeover unless both peers were up, in which case there would be no
-point in taking over.
+primary.  Two-peer mode is analogous to two manatee nodes with no async (a
+degraded state).  Operationally this mode does not make sense with this
+algorithm since it will never failover (the sync will never attempt a takeover
+without an async).
 
 There are two state machines here.  There's an overall cluster state, which is
 ultimately "unavailable", "read-only", or "read-write", and has an additional
@@ -108,7 +109,7 @@ As a result of these rules, we can say that:
   primary assigned for G+1.  The only two nodes that could attempt to do this
   are the P or S from generation G.  It would be extremely unlikely for them to
   do this at the same time, since both of them will only do this when
-  determining that the other's ZK session has expired, but we can use a
+  determining that the other's ZK session has expired, but we will use a
   test-and-set operation to make sure that only one of them can successfully do
   this.
 
@@ -133,18 +134,18 @@ that we never lose data.
    ephemeral node that represents this peer.
 2. If at any point the ZK session expires, go back to step 1.
 3. Read the current cluster state.
-    a. If there is no current state, then the cluster has never been set up yet.
-	i.  If there are other ephemeral nodes in the cluster, and our ephemeral
-	    node is the first one according to the ZK-defined order, then go to
-	    "Declaring a generation" below.
-        ii. Otherwise, wait a few seconds and go to step 1.
-    b. If the current state indicates that we are the primary, then go to
+    1. If there is no current state, then the cluster has never been set up yet.
+        1.  If there are other ephemeral nodes in the cluster, and our ephemeral
+            node is the first one according to the ZK-defined order, then go to
+            "Declaring a generation" below.
+        2. Otherwise, wait a few seconds and go to step 1.
+    2. If the current state indicates that we are the primary, then go to
        "Assume the role of primary" below.
-    c. If the current state indicates that we are the sync, then go to "Assume
+    3. If the current state indicates that we are the sync, then go to "Assume
        the role of sync" below.
-    d. If the current state indicates that we are an async, then go to "Assume
+    4. If the current state indicates that we are an async, then go to "Assume
        the role of async" below.
-    e. Otherwise, we must be a newly-provisioned node.  We will become an async,
+    5. Otherwise, we must be a newly-provisioned node.  We will become an async,
        but we will wait for the current primary to assign our upstream.  Wait a
        few seconds and go to step 1.
 
@@ -215,9 +216,10 @@ proceed to "Assume the role of primary" below.
 
 ### Async peer management
 
-The primary has to maintain the list of async peers, and it should try to avoid
-shuffling the order, since the reversal of two peers in this list will require
-rolling back changes on one of them in order to resume replication.
+The primary has to maintain the list of async peers, and it must try to avoid
+shuffling the order, since the reversal of two peers in this list will break
+replication down the chain and requires rolling back changes on one of them in
+order to resume replication.
 
 When a new async joins, it creates its ephemeral node.  When the primary sees
 that, it appends the async to A[] in the cluster state.  When the async sees
@@ -240,4 +242,3 @@ From each peer's perspective, the only events related to ZK are:
 * **client timeout** (client has failed to heartbeat in too long): This is a
   nop.  It will eventually result in a session expiration or a normal
   reconnection.
-
