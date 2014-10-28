@@ -9,24 +9,13 @@ digraph G {
 	edge[fontname="Optima", color=gray, fontcolor=gray20];
 
 	/* common nodes */
-	// subgraph cluster_startup {
-	//	label="Startup";
-		cmn_startup[label="manatee process start",
-		    fontname="Optima bold",
-		    shape=box,color=white,fontstyle=bold,group=startup_main];
-		cmn_readstate[label="uninitialized",shape=box,
-		    group=startup_main];
-		cmn_q_statepresent[label="state present\nin ZK?",shape=diamond,
-		    group=startup_main];
-		cmn_wait[label="wait N seconds",shape=box];
-		cmn_q_primary[label="am primary?",shape=diamond,
-		    group=startup_main];
-		cmn_q_firstprimary[label="am first\nand another\nnode present?",
-		    shape=diamond];
-		cmn_q_sync[label="am sync?",shape=diamond, group=startup_main];
-		cmn_q_async[label="am async?",shape=diamond,
-		    group=startup_main];
-	//};
+	cmn_startup[label="manatee process start", fontname="Optima bold",
+	    shape=box,color=white,fontstyle=bold,group=startup_main];
+	cmn_readstate[label="read state from ZK",shape=box,group=startup_main];
+
+	cmn_wait[label="wait N seconds",shape=box];
+	cmn_q_firstprimary[label="am first\nand another\nnode present?",
+	    shape=diamond];
 
 	cmn_opneeded[label="rollback needed\n(currently manual)", shape=box,
 	    style="filled",fillcolor=mistyrose,color=red4, fontcolor=red4];
@@ -34,18 +23,15 @@ digraph G {
 
 	/* startup: common path */
 	cmn_startup -> cmn_readstate [label="zk: session established"];
-	cmn_readstate -> cmn_q_statepresent[label="read state from ZK"];
 	cmn_wait -> cmn_readstate;
 	cmn_opneeded_merge -> cmn_opneeded[label="G changed\n(we were\n" +
 	    "declared dead)",color=lightpink];
-	cmn_q_statepresent -> cmn_q_primary[label="yes"];
-	cmn_q_primary -> cmn_q_sync[label="no"];
-	cmn_q_sync -> cmn_q_async[label="no"];
-	cmn_q_async -> cmn_wait[label="no (new async\nprovisioned after\n" +
-	    "initial cluster setup;\nwait for primary to\nassign it)"];
+	cmn_readstate -> cmn_wait[label="state present, but\nself unassigned\n" +
+	    "(new async provisioned\nafter initial cluster setup;\n" +
+	    "wait for primary to\nassign it)"];
 
 	/* startup: wait path */
-	cmn_q_statepresent -> cmn_q_firstprimary[label="no (initial setup)"];
+	cmn_readstate -> cmn_q_firstprimary[label="no state\n(initial setup)"];
 	cmn_q_firstprimary -> cmn_wait[label="no (need\ntwo hosts for\n" +
 	    "initial setup)"];
 
@@ -66,7 +52,7 @@ digraph G {
 
 	cmn_q_firstprimary -> p_newgen[label="yes (on initial setup,\n" +
 	    "first node wins)",style=bold, color=forestgreen];
-	cmn_q_primary -> p_resume[label="yes"];
+	cmn_readstate -> p_resume[label="state indicates\nself primary"];
 	p_newgen -> p_resume;
 	p_resume -> p_ro[label="pg: started"];
 	p_ro -> p_rw[label="sync attached\nand caught up",style=dashed];
@@ -93,7 +79,7 @@ digraph G {
 		    color=forestgreen,fillcolor=palegreen];
 	};
 
-	cmn_q_sync -> s_resume[label="yes"];
+	cmn_readstate -> s_resume[label="state indicates\nself sync"];
 	s_resume -> s_ro[label="pg: started"];
 	s_ro -> s_rw[label="pg: attached\nto primary\nand caught\nup",
 	    style=dashed];
@@ -116,6 +102,6 @@ digraph G {
 		    group=startup_main];
 	};
 
-	cmn_q_async -> a_rest[label="yes"];
+	cmn_readstate -> a_rest[label="state indicates\nself async"];
 	a_rest -> cmn_readstate[label="G changed\n(takeover happened)"];
 }
