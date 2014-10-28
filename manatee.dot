@@ -1,90 +1,121 @@
 digraph G {
 	/* default formatting */
-	node[fontname="Optima", color=gray, fontcolor=gray20];
+	color=gray20;
+	fontcolor=gray20;
+	splines=spline;
+	compound=true;
+	style=rounded;
+	node[fontname="Optima", color=gray, style=rounded, fontcolor=gray20];
 	edge[fontname="Optima", color=gray, fontcolor=gray20];
 
 	/* common nodes */
-	cmn_startup[label="start up",shape=box];
-	cmn_readstate[label="uninitialized",shape=box];
-	cmn_q_statepresent[label="state present?",shape=diamond];
-	cmn_wait[label="wait N seconds.",shape=box];
-	cmn_opneeded[label="rollback needed", shape=box];
+	// subgraph cluster_startup {
+	//	label="Startup";
+		cmn_startup[label="manatee process start",
+		    fontname="Optima bold",
+		    shape=box,color=white,fontstyle=bold,group=startup_main];
+		cmn_readstate[label="uninitialized",shape=box,
+		    group=startup_main];
+		cmn_q_statepresent[label="state present\nin ZK?",shape=diamond,
+		    group=startup_main];
+		cmn_wait[label="wait N seconds",shape=box];
+		cmn_q_primary[label="am primary?",shape=diamond,
+		    group=startup_main];
+		cmn_q_firstprimary[label="am first\nand another\nnode present?",
+		    shape=diamond];
+		cmn_q_sync[label="am sync?",shape=diamond, group=startup_main];
+		cmn_q_async[label="am async?",shape=diamond,
+		    group=startup_main];
+	//};
+
+	cmn_opneeded[label="rollback needed\n(currently manual)", shape=box,
+	    style="filled",fillcolor=mistyrose,color=red4, fontcolor=red4];
 	cmn_opneeded_merge[shape=circle,width=0.01,height=0.01,label=""];
-	cmn_q_primary[label="am primary?",shape=diamond];
-	cmn_q_firstprimary[label="am first and\nanother node present?",
-	    shape=diamond];
-	cmn_q_sync[label="am sync?",shape=diamond];
-	cmn_q_async[label="am assigned as async?",shape=diamond];
 
 	/* startup: common path */
 	cmn_startup -> cmn_readstate [label="zk: session established"];
 	cmn_readstate -> cmn_q_statepresent[label="read state from ZK"];
 	cmn_wait -> cmn_readstate;
-	cmn_opneeded_merge -> cmn_opneeded[label="G changed"];
+	cmn_opneeded_merge -> cmn_opneeded[label="G changed\n(we were\n" +
+	    "declared dead)",color=lightpink];
 	cmn_q_statepresent -> cmn_q_primary[label="yes"];
 	cmn_q_primary -> cmn_q_sync[label="no"];
 	cmn_q_sync -> cmn_q_async[label="no"];
-	cmn_q_async -> cmn_wait[label="no"];
+	cmn_q_async -> cmn_wait[label="no (new async\nprovisioned after\n" +
+	    "initial cluster setup;\nwait for primary to\nassign it)"];
 
 	/* startup: wait path */
-	cmn_q_statepresent -> cmn_q_firstprimary[label="no"];
-	cmn_q_firstprimary -> cmn_wait[label="no"];
-
-
-	/* async: nodes and edges */
-	a_rest[label="Connect to previous node in \n" +
-	    "replication chain and\nbegin replicating.",shape=box];
-	cmn_q_async -> a_rest[label="yes"];
-	a_rest -> cmn_readstate[label="G changed"];
+	cmn_q_statepresent -> cmn_q_firstprimary[label="no (initial setup)"];
+	cmn_q_firstprimary -> cmn_wait[label="no (need\ntwo hosts for\n" +
+	    "initial setup)"];
 
 
 	/* primary: election, ro, and rw states */
-	p_newgen[label="declare self P and write new cluster state",shape=box];
-	p_resume[label="assume P\nstart postgres",shape=box];
-	p_ro[label="P (ro)"];
-	p_rw[label="P (rw)"];
+	subgraph cluster_primary {
+		label="Primary";
+		p_newgen[label="new generation: declare\nself P and write \n" +
+		    "new cluster state", group=primary,shape=box];
+		p_resume[label="start postgres\nas primary",group=primary,
+		    shape=box];
+		p_ro[label="P (ro)",group=primary,style="filled,bold",
+		    fillcolor="palegoldenrod",color="yellow4"];
+		p_rw[label="P (rw)",group=primary,style="filled,bold",
+		    color=forestgreen,fillcolor=palegreen];
+	};
 	p_newgen_merge[shape=circle,width=0.01,height=0.01,label=""];
 
-	cmn_q_firstprimary -> p_newgen[label="yes"];
+	cmn_q_firstprimary -> p_newgen[label="yes (on initial setup,\n" +
+	    "first node wins)",style=bold, color=forestgreen];
 	cmn_q_primary -> p_resume[label="yes"];
 	p_newgen -> p_resume;
 	p_resume -> p_ro[label="pg: started"];
 	p_ro -> p_rw[label="sync attached\nand caught up",style=dashed];
-	p_rw -> p_ro[label="sync repl detached",style=dashed];
+	p_rw -> p_ro[label="sync\ndetached",style=dashed];
 
 	/* primary: rollback needed when G changes */
-	p_resume -> cmn_opneeded_merge[arrowhead=none];
-	p_ro -> cmn_opneeded_merge[arrowhead=none];
-	p_rw -> cmn_opneeded_merge[arrowhead=none];
+	p_resume -> cmn_opneeded_merge[ltail=cluster_primary,arrowhead=none,
+	    color=lightpink];
 
 	/* primary: declare new generation when S disappears */
-	p_newgen_merge -> p_newgen[label="zk: ephemeral node for S disappears"];
-	p_resume -> p_newgen_merge[arrowhead=none];
-	p_ro -> p_newgen_merge[arrowhead=none];
-	p_rw -> p_newgen_merge[arrowhead=none];
+	p_newgen_merge -> p_newgen[label="zk: ephemeral node for S disappears",
+	    style="bold",color=forestgreen];
+	p_resume -> p_newgen_merge[arrowhead=none,ltail=cluster_primary,
+	    style="bold",color=forestgreen];
 
 
 	/* sync states */
-	s_resume[label="assume S\nstart postgres",shape=box];
-	s_ro[label="S (cluster ro)"];
-	s_rw[label="S (cluster rw)"];
-	s_tomerge[shape=circle,width=0.01,height=0.01,label=""];
+	subgraph cluster_sync {
+		label="Sync";
+		s_resume[label="start postgres\n as sync",shape=box,group=sync];
+		s_ro[label="S (cluster ro)",group=sync,style="filled,bold",
+		    fillcolor="palegoldenrod",color="yellow4"];
+		s_rw[label="S (cluster rw)",group=sync,style="filled,bold",
+		    color=forestgreen,fillcolor=palegreen];
+	};
 
 	cmn_q_sync -> s_resume[label="yes"];
 	s_resume -> s_ro[label="pg: started"];
-	s_ro -> s_rw[label="pg: attached to primary\nand caught up",
+	s_ro -> s_rw[label="pg: attached\nto primary\nand caught\nup",
 	    style=dashed];
-	s_rw -> s_ro[label="pg: detached from primary",style=dashed];
+	s_rw -> s_ro[label="pg: detached\nfrom primary",style=dashed];
 
 	/* sync: detect cluster has moved on */
-	s_resume -> cmn_opneeded_merge[arrowhead=none];
-	s_ro -> cmn_opneeded_merge[arrowhead=none];
-	s_rw -> cmn_opneeded_merge[arrowhead=none];
+	s_resume -> cmn_opneeded_merge[ltail=cluster_sync,arrowhead=none,
+	    color=lightpink];
 
 	/* sync: takeover as primary */
-	s_resume -> s_tomerge[arrowhead=none];
-	s_ro -> s_tomerge[arrowhead=none];
-	s_rw -> s_tomerge[arrowhead=none];
-	s_tomerge -> p_newgen[label="zk: ephemeral node for P disappears,\n" +
-	    "another node present,\nand S WAL >= generation's initial WAL\n"];
+	s_resume -> p_newgen[label="zk: ephemeral node for P disappears,\n" +
+	    "another node present,\nand S WAL >= generation's initial WAL\n",
+	    style="bold",color=forestgreen,ltail=cluster_sync];
+
+	/* async: nodes and edges */
+	subgraph cluster_async {
+		label="Async";
+		a_rest[label="Connect to previous node in \n" +
+		    "replication chain and\nbegin replicating.",shape=box,
+		    group=startup_main];
+	};
+
+	cmn_q_async -> a_rest[label="yes"];
+	a_rest -> cmn_readstate[label="G changed\n(takeover happened)"];
 }
