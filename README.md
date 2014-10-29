@@ -68,7 +68,7 @@ contents are a JSON object that includes:
 Notes on cluster state:
 
 * The cluster moves atomically from one generation to the next, though obviously
-  not all peers discover this move atomically.
+  not all peers discover the change atomically.
 * When a new generation is **declared**, the primary for that generation writes
   out a complete cluster state that contains G, P, S, A[], and init\_wal.  All
   of these fields except for "A[]" will be immutable for the duration of this
@@ -104,16 +104,13 @@ As a result of these rules, we can say that:
   determining that the other's ZK session has expired, but we will use a
   test-and-set operation to make sure that only one of them can successfully do
   this.
-
-Additionally, every new generation of cluster state includes a valid assignment
-of P, S, and A[] such that:
-
-* P can replicate to S
-* S can replicate to A0
-* Ai can replicate to A(i+1)
-
-which also means that P is at least as far ahead as any other peer, which means
-that we never lose data.
+* Additionally, every new generation of cluster state includes a valid
+  assignment of P, S, and A[] such that:
+    * P can replicate to S
+    * S can replicate to A0
+    * Ai can replicate to A(i+1)
+  which also means that P is at least as far ahead as any other peer, which
+  means that we never lose data.
 
 ## Algorithm overview
 
@@ -123,9 +120,12 @@ that we never lose data.
 ## Algorithm
 
 1. On startup, connect to the ZK cluster, establish a session, and create the
-   ephemeral node that represents this peer.
+   ephemeral node that represents this peer.  Set a watch on the cluster state
+   object.
 2. If at any point the ZK session expires, go back to step 1.
-3. Read the current cluster state.
+3. If at any point the cluster state changes, reread it.  If G has changed, go
+   back to step 1.
+4. Read the current cluster state.
     1. If there is no current state, then the cluster has never been set up yet.
         1.  If there are other ephemeral nodes in the cluster, and our ephemeral
             node is the first one according to the ZK-defined order, then go to
