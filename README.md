@@ -12,12 +12,13 @@ h2 {
 }
 </style>
 
-# Manatee 2.0 state machine
+# New Manatee state machine
 
 ## Introduction
 
-This document attempts to describe Manatee 2.0 relatively formally to help us
-understand the various cases that need to be considered for the implementation.
+This document attempts to describe the upcoming Manatee changes relatively
+formally to help us understand the various cases that need to be considered for
+the implementation.
 
 Recall that Manatee is a cluster of three or more postgres instances such that:
 
@@ -50,6 +51,7 @@ executed independently by each peer.  The point is to design the individual
 state machine such that the resulting cluster state machine does what we want
 (maximizes availability without ever losing data).
 
+
 ## Cluster state
 
 In this model, *all* state related to the configuration of the cluster is stored
@@ -59,9 +61,13 @@ inside ZooKeeper.  There are two kinds of state stored in ZooKeeper:
 ephemeral node that identifies itself.  These nodes are implicitly ordered by
 ZK.  When the node's session is expired by ZK (e.g., as a result of prolonged
 disconnection), the ephemeral node is removed, and all peers with established
-ZK sessions are notified.
+ZK sessions are notified.  In implementation, this means that for each manatee
+cluster, there will be a single directory containing the ephemeral nodes for
+each peer.  These nodes are created when each peer's session is established, and
+node's will watch this directory to be notified of peers coming and going.
 
-**Cluster state**: the cluster state is non-ephemeral, and consists of:
+**Cluster state**: the cluster state is a single, non-ephemeral object whose
+contents are a JSON object that includes:
 
 * **G**, a generation number
 * **P**, the hostname (or other identifier) for the current primary peer
