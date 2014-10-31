@@ -4,6 +4,12 @@ We know that problems arise in Postgres when we have transaction log divergence.
 This is a short document showing one easy way to get two diverged postgres
 instances.
 
+tl;dr: This causes divergence:
+```
+sync$ mv /manatee/pg/data/recovery.conf /var/tmp/. && \
+      sudo -u postgres /opt/local/bin/postgres -D /manatee/pg/data
+```
+
 It is assumed that the reader is familiar with Manatee administration commands.
 The initial setup is a two node primary/sync deployment.  First note that
 replication is set up between them and that writes to primary are replicated to
@@ -197,7 +203,7 @@ See that the new xlog advanced with just that one command:
 0/4761780 # First startup without recovery.conf
 ```
 
-Also note that moving the recover.conf back in place and running it as snc again,
+Also note that moving the recover.conf back in place and running it as sync again,
 the logs are still diverged:
 ```
 [root@0100a2cb (postgres) ~]$ mv /var/tmp/recovery.conf /manatee/pg/data/.
