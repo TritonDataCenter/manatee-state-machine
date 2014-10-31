@@ -118,9 +118,9 @@ acked to the client).  Both asyncs are a little behind their upstreams as well
 ```
 
 Since there are a sufficient number of zk nodes to form a quorum and the sync
-was "up to date", the sync takes over as primary, C is chosen as sync and D
-attempts to start slaving from C.  The network is so flaky, though, that D
-doesn't get writes from C.  The new primary happily start accepting writes:
+was "up to date", B takes over as primary, C is chosen as sync and B starts
+taking writes.  The network is still flaky, though, so D isn't able to notice
+that B has taken over as primary, and tries in vain to keep slaving from C:
 ```
   DC 1     DC 2  |  DC 3
   ----     ----  |  ----
@@ -141,7 +141,8 @@ The network partition then flips:
 ```
 
 Since there are a sufficient number of zk nodes to form a quorum, the old
-primary catches D up, D becomes a sync, and A starts taking writes again:
+primary catches D up, D can become sync because its xlog never diverged, and A
+starts taking writes again:
 ```
   DC 1  |  DC 2     DC 3
   ----  |  ----     ----
@@ -153,8 +154,21 @@ primary catches D up, D becomes a sync, and A starts taking writes again:
 
 Once the network partition goes away B will see that there is a new primary, but
 the xlogs have diverged, meaning that data consistency is violated.  Clients
-attempting to read data that was written to B will not be found.  While a very
-contrived example, it shows that any old primary must somehow find out that it
-has been declared "dead" or there is a possibility of split-brain.  This can be
-done in a few ways, but all require either embedded consensus engines (paxos or
-raft) or external persistent storage.
+attempting to read data that was written to B will not be found.
+
+# Fin
+
+While a very contrived example, it shows that any old primary must somehow find
+out that it has been declared "dead" or there is a possibility of split-brain.
+The root of why this won't work is because the old primary should never be
+allowed to accept writes after the sync has been promoted.  This is a classic
+consensus problem (a quorum of something needs to record that the sync is
+ascending before it can), and requires persistent data.  This could be done in a
+couple ways:
+
+1. Use an embedded consensus engine (paxos, raft, etc) between the Manatees to
+   record and propagate cluster configuration.
+2. Use an external consensus service (zk, etc).
+
+We'll almost certainly go with #2 since we don't have #1 and zk is already a
+part of SDC and Manta.
