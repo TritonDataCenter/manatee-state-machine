@@ -1,5 +1,9 @@
 # Manatee Using Only Ephemeral Nodes
 
+***Update:***: The current version of Manatee actually does use persistent ZK
+state to make decisions.  So parts of this document are incorrect.  The exercise
+is still useful, though.
+
 When assessing different options for fixing Manatee, one consideration was
 whether we should store persistent data in Zookeeper (zk).  The current version
 of Manatee uses only ephemeral nodes in zk + state that each Manatee knows when
