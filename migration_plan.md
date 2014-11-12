@@ -71,7 +71,8 @@ Primary  A     A         A         C'        C'
 Sync     B     B C'      C'        B'        B'
          |               |                   |
 Async    C               B'                  A'
-         ^
+
+Notes    ^
          Cluster state [A, C, B] is put "manually"
 
          -----^
@@ -116,6 +117,11 @@ for an operator to do is to make sure they are:
 3. Deploy B
 4. Deploy A
 5. Deploy new Morays
+
+Note that it is safe to deploy new morays at any time after step 1.  There are
+risks in deploying them either too soon or too late.  I've opted for the
+later because chances of failure doesn't outweigh the need for "easier"
+rollback.
 
 # Rollback
 
