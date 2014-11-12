@@ -133,7 +133,27 @@ Steps work in reverse from deployment:
 4. If step 2 was done, rollback C
 5. Delete /state manually from zookeeper
 
-# Questions
+# Appendix
+
+## Backward compatible node-manatee
+
+node-manatee is the repository that Moray uses to connect to Manatee.  It
+currently figures out which host is primary by looking at the order of ephemeral
+nodes.  This needs to change with the new cluster state zookeeper node.
+
+In order to make node-manatee backward compatible it would need to detect if
+the state node is present and, if so, use it.  If it isn't there it would need to
+set a watch on the creation and fall back to using the order to determine
+which is primary.  If the state creation watch ever fires, it would need to
+transition to using that.
+
+Also, for completeness it would need to watch for the deletion of the state
+node in case the rollout of new manatees fail.
+
+It is an open question whether we should do this work first and make sure
+morays are rolled out before manatees.
+
+## Open Questions
 
 1. Can we confirm [A, [B, C']] topology work?
 2. Is it safe if morays are attempting to write to an old sync or async?  Will
@@ -142,3 +162,4 @@ Steps work in reverse from deployment:
    a newly deployed C'?
 4. Should we make Morays backward compatible?
 5. What should the init_WAL be when initial cluster state is written?
+
