@@ -153,13 +153,25 @@ node in case the rollout of new manatees fail.
 It is an open question whether we should do this work first and make sure
 morays are rolled out before manatees.
 
+## Closed Questions
+
+1. Can we confirm [A, [B, C']] topology work?  Yes, I recreated by setting up a
+   3-node manatee cluster, disabling the manatee-sitter on the async, updating
+   the async's /manatee/pg/data/recovery.conf to point to the primary, and
+   starting up the async "manually" (with
+   sudo -u postgres /opt/local/bin/postgres -D /manatee/pg/data).  Then putting
+   data into te primary, I could see the data show up on the async.  Also, the
+   primary's pg_stat_replication table showed it as an async.
+1. Is it safe if morays are attempting to write to an old sync or async?  Will
+   those happily accept writes?  Tried by manually hacking a moray instance to
+   connect to the sync and then the async.  Both responded with the same error:
+   "InternalError: unable to create bucket; caused by error: cannot execute
+   INSERT in a read-only transaction" So the answer is "yes", morays talking to
+   either an old sync or an old async is safe.
+
 ## Open Questions
 
-1. Can we confirm [A, [B, C']] topology work?
-2. Is it safe if morays are attempting to write to an old sync or async?  Will
-   those happily accept writes?
-3. Should we attempt to automate putting the preemptive cluster state there by
+1. Should we attempt to automate putting the preemptive cluster state there by
    a newly deployed C'?
-4. Should we make Morays backward compatible?
-5. What should the init_WAL be when initial cluster state is written?
-
+1. Should we make Morays backward compatible (as described above)?
+1. What should the init_WAL be when initial cluster state is written?
