@@ -237,3 +237,138 @@ From each peer's perspective, the only events related to ZK are:
 * **client timeout** (client has failed to heartbeat in too long): This is a
   nop.  It will eventually result in a session expiration or a normal
   reconnection.
+
+
+# Implementation notes
+
+## Data structures
+
+### peer identifier
+
+Several parts of the interface refer to individual manatee peers.  Identifiers
+are non-null objects with several properties:
+
+* `id` (string): an immutable, unique identifier for this peer
+* `zoneId` (string): the hostname of the manatee peer, for operator reference
+  only.  This is not guaranteed to be unique, and should not be used
+  programmatically.
+* `ip` (string, IPv4 address): an IP address for the manatee peer, for operator
+  reference only.  This is not guaranteed to be unique, and should not be used
+  programmatically.
+* `pgUrl` (string, postgres URL): URL for contacting the postgres peer.  This is
+  unique.
+
+**The state machine implementation does not interpret any of these fields.  For
+comparing the identities of two peers, only the `id` field is used.**
+
+### clusterState
+
+`clusterState` is an object.  If not initialized in ZK, its JavaScript value is
+`null`.  Otherwise, it has these properties:
+
+* `generation` (integer): generation number
+* `primary` (peer identifier): the primary peer
+* `sync` (peer identifier, see above): the synchronous replication peer
+* `async` (array of peer identifiers, see above): the list of asynchronous
+  peers, in replication order.  That is, `async[i]` replicates from
+  `async[i-1]`, and `async[0]` replicates from `sync`.
+* `initWal` (string, postgres WAL location): the WAL of the primary when this
+  generation began.
+
+### pg config
+
+`pg config` is a non-null object representing postgres configuration.  It always
+has this properties:
+
+* `role` (string): one of `'primary'`, `'standby'`, or `'none'`.
+
+If `role` is `'primary'`, then there's a `'downstream'` property which is the
+`pgUrl` field for the corresponding manatee peer (see `peer identifier` above).
+In this case, the `upstream` property is `null`.
+
+If `role` is `'standby'`, then there's an `'upstream'` property which is the
+`pgUrl` field for the corresponding manatee peer (see `peer identifier` above).
+In this case, the `downstream` property is `null` (even though there may be a
+downstream, because this information is not part of the postgres configuration
+for this peer).
+
+If `role` is `'none'`, then replication is not configured at all, and
+`'upstream'` and `'downstream'` are both null.
+
+For examples:
+
+    {
+        "role": "primary",
+        "upstream": null,
+        "downstream": "tcp://postgres@10.77.77.7:5432/postgres"
+    }
+
+    {
+        "role": "standby",
+        "upstream": "tcp://postgres@10.77.77.7:5432/postgres",
+        "downstream": null
+    }
+
+    {
+        "role": "none",
+        "upstream": null,
+        "downstream": null
+    }
+
+## Interfaces
+
+There are two interfaces used by the state machine implementation: the ZK
+interface and the postgres interface.
+
+### ZK interface
+
+**Methods**:
+
+* `putClusterState(clusterState, callback)`: does a test-and-set write to the
+  cluster state node in ZK using the given `clusterState` object for the new
+  contents.  On success, invokes `callback` with no arguments.  On failure,
+  invokes `callback` with an Error describing the problem.
+
+**Events**:
+
+* `init` (arg `clusterState`): emitted once for the lifetime of this event
+  emitter.  `clusterState` is the cluster state found, an object of type
+  `clusterState` (see above).  **This is always the first event emitted by this
+  object.**
+* `clusterStateChange` (arg `clusterState`): emitted any time the `clusterState`
+  ZK node changes.
+* `activeChange` (arg `allActive`): emitted once, immediately after the first
+  `init` event, and again any time the directory of ephemeral nodes
+  (representing the set of peers in this cluster with active ZK sessions)
+  changes.  `allActive` is an array of `peer identifier`s.
+
+
+### PG interface
+
+**Methods**:
+
+**All three of these are asynchronous`.  None of these methods may be called
+while any asynchronous operations on the interface are outstanding.**
+
+* `reconfigure(pgConfig, callback)`: reconfigures postgres replication according
+  to the given configuration (see `pg config` above).  Invokes `callback` on
+  completion, with no arguments on success and an Error on failure.  This does
+  not start or stop postgres.  The caller must do that separately.
+* `start(callback)`: starts postgres with the last configuration specified to
+  `reconfigure`.  Invokes `callback` on completion, with no arguments on success
+  and an Error on failure.
+* `stop(callback)`; stops postgres.  Invokes `callback` on completion, with no
+  arguments on success and an Error on failure.
+
+There are these additional methods:
+
+* `getXLogLocation(callback)`: Fetches the last known Xlog position from
+  Postgres and returns it asynchronously to `callback`.  May return an error
+  to `callback` instead.  XXX: can this work even when postgres is not online?
+
+**Events**:
+
+* `init`: emitted when the interface is ready
+* `caughtUp`: emitted after postgres has been started and is configured for
+  synchronous replication from an upstream source *and* the local WAL has caught
+  up to the upstream and synchronous replication has been engaged.
