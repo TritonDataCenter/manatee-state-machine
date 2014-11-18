@@ -1,5 +1,8 @@
 # New Manatee state machine
 
+This repo contains documentation and initial implementation pieces of the new
+Manatee state machine.
+
 ## Introduction
 
 This document attempts to describe the upcoming Manatee changes relatively
