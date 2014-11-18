@@ -1,0 +1,38 @@
+#!/usr/bin/env node
+/* vim: set ft=javascript: */
+
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * Copyright (c) 2014, Joyent, Inc.
+ */
+
+/*
+ * msim: manatee state machine one-node simulator
+ */
+
+var mod_path = require('path');
+
+var arg0 = mod_path.basename(process.argv[1]);
+var createSimulator = require('../lib/sim');
+
+function main()
+{
+	var sim;
+
+	sim = createSimulator({
+	    'progName': arg0,
+	    'logLevel': process.env['LOG_LEVEL'] || 'debug',
+	    'input': process.stdin,
+	    'output': process.stdout,
+	    'error': process.stderr
+	});
+
+	sim.startRepl();
+}
+
+main();

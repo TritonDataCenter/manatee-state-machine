@@ -1,5 +1,8 @@
 # New Manatee state machine
 
+This repo contains documentation and initial implementation pieces of the new
+Manatee state machine.
+
 ## Introduction
 
 This document attempts to describe the upcoming Manatee changes relatively
@@ -62,7 +65,7 @@ contents are a JSON object that includes:
   be caught up to the primary (P) when the generation begins.
 * **A[]**, an ordered list of async peers, where the order defines the
   replication order
-* **init_wal**, the current position (a monotonically increasing integer) in P's
+* **init\_wal**, the current position (a monotonically increasing integer) in P's
   WAL when the current generation began
 
 Notes on cluster state:
@@ -70,8 +73,8 @@ Notes on cluster state:
 * The cluster moves atomically from one generation to the next, though obviously
   not all peers discover the change atomically.
 * When a new generation is **declared**, the primary for that generation writes
-  out a complete cluster state that contains G, P, S, A[], and init\_wal.  All
-  of these fields except for "A[]" will be immutable for the duration of this
+  out a complete cluster state that contains G, P, S, A, and init\_wal.  All
+  of these fields except for "A" will be immutable for the duration of this
   generation.
 * The first generation is declared when there is no previous generation and there
   are at least two peers' ephemeral nodes present.  This generation is declared
@@ -80,14 +83,14 @@ Notes on cluster state:
 * Subsequent generations may be declared in exactly two situations:
     * The primary for generation G may declare a new generation G+1 if it
       determines that S has failed (because S's ephemeral node disappears) *and*
-      at least one async from A[] is still present.  P will select a new S from
-      the head of A[] and declare a new generation.  If the old S comes back, it
+      at least one async from A is still present.  P will select a new S from
+      the head of A and declare a new generation.  If the old S comes back, it
       will see that it is no longer S.
     * The secondary for generation G may declare a new generation G+1 if it
       determines that P has failed (because P's ephemeral node disappears) *and*
-      at least one async from A[] is still present *and* its own WAL log
-      position is at least as large as "init_wal".  If S's WAL position is less
-      than "init_wal", then S was never fully caught up to P and the system
+      at least one async from A is still present *and* its own WAL log
+      position is at least as large as "init\_wal".  If S's WAL position is less
+      than "init\_wal", then S was never fully caught up to P and the system
       cannot proceed until P returns or an operator intervenes.
 * When a generation is initially declared, S is usually not yet caught up to P.
   The cluster may be made available read-only, but it's not until S establishes
@@ -105,7 +108,7 @@ As a result of these rules, we can say that:
   test-and-set operation to make sure that only one of them can successfully do
   this.
 * Additionally, every new generation of cluster state includes a valid
-  assignment of P, S, and A[] such that:
+  assignment of P, S, and A such that:
     * P can replicate to S
     * S can replicate to A0
     * Ai can replicate to A(i+1)
@@ -165,7 +168,7 @@ assigned as S.  As a result, the new cluster state is derived as:
   is A0, the first async peer.
 * **A**: the ordered list from the previous generation with A0 (the head of the
   list) removed
-* **init_wal**: the current position in P's WAL
+* **init\_wal**: the current position in P's WAL
 
 This state is written with a test-and-set operation over the original state.  If
 that fails, go to step 1 of the algorithm above.  If this operation succeeds,
@@ -199,10 +202,10 @@ proceed to "Assume the role of primary" below.
 
 ### Assume the role of async
 
-1. Find our entry in the list A[] of async peers.  The previous entry (or S, if
-   we're the first entry in A[]) is our upstream source.  Begin replicating from
+1. Find our entry in the list A of async peers.  The previous entry (or S, if
+   we're the first entry in A) is our upstream source.  Begin replicating from
    the upstream source.
-2. If A[] changes, then go to step 1.
+2. If A changes, then go to step 1.
 3. If G changes, then go to step 1 in the main algorithm above.
 
 
@@ -214,9 +217,9 @@ replication down the chain and requires rolling back changes on one of them in
 order to resume replication.
 
 When a new async joins, it creates its ephemeral node.  When the primary sees
-that, it appends the async to A[] in the cluster state.  When the async sees
+that, it appends the async to A in the cluster state.  When the async sees
 that, it begins replicating from the previous A, or from S if it's at the head
-of A[].  If the async goes away, the primary removes it from A[].  The peer
+of A.  If the async goes away, the primary removes it from A.  The peer
 behind the peer that failed must notice this and begin replicating from the next
 upstream peer.
 
@@ -234,3 +237,139 @@ From each peer's perspective, the only events related to ZK are:
 * **client timeout** (client has failed to heartbeat in too long): This is a
   nop.  It will eventually result in a session expiration or a normal
   reconnection.
+
+
+# Implementation notes
+
+## Data structures
+
+### peer identifier
+
+Several parts of the interface refer to individual manatee peers.  Identifiers
+are non-null objects with several properties:
+
+* `id` (string): an immutable, unique identifier for this peer
+* `zoneId` (string): the hostname of the manatee peer, for operator reference
+  only.  This is not guaranteed to be unique, and should not be used
+  programmatically.
+* `ip` (string, IPv4 address): an IP address for the manatee peer, for operator
+  reference only.  This is not guaranteed to be unique, and should not be used
+  programmatically.
+* `pgUrl` (string, postgres URL): URL for contacting the postgres peer.  This is
+  unique.
+
+**The state machine implementation does not interpret any of these fields.  For
+comparing the identities of two peers, only the `id` field is used.**
+
+### clusterState
+
+`clusterState` is an object.  If not initialized in ZK, its JavaScript value is
+`null`.  Otherwise, it has these properties:
+
+* `generation` (integer): generation number
+* `primary` (peer identifier): the primary peer
+* `sync` (peer identifier, see above): the synchronous replication peer
+* `async` (array of peer identifiers, see above): the list of asynchronous
+  peers, in replication order.  That is, `async[i]` replicates from
+  `async[i-1]`, and `async[0]` replicates from `sync`.
+* `initWal` (string, postgres WAL location): the WAL of the primary when this
+  generation began.
+
+### pg config
+
+`pg config` is a non-null object representing postgres configuration.  It always
+has this properties:
+
+* `role` (string): one of `'primary'`, `'sync'`, `'async'`, or `'none'`.
+
+If `role` is `'primary'`, then there's a `'downstream'` property which is a
+manatee peer identifier (see `peer identifier` above).  In this case, the
+`upstream` property is `null`.
+
+If `role` is `'sync'` or `'async'`, then there's an `'upstream'` property which
+is a manatee peer identifier (see `peer identifier` above).  In this case,
+the `downstream` property is `null` (even though there may be a downstream,
+because this information is not part of the postgres configuration for this
+peer).
+
+If `role` is `'none'`, then replication is not configured at all, and
+`'upstream'` and `'downstream'` are both null.
+
+For examples:
+
+    {
+        "role": "primary",
+        "upstream": null,
+        "downstream": "tcp://postgres@10.77.77.7:5432/postgres"
+    }
+
+    {
+        "role": "sync",
+        "upstream": "tcp://postgres@10.77.77.7:5432/postgres",
+        "downstream": null
+    }
+
+    {
+        "role": "none",
+        "upstream": null,
+        "downstream": null
+    }
+
+## Interfaces
+
+There are two interfaces used by the state machine implementation: the ZK
+interface and the postgres interface.
+
+### ZK interface
+
+**Methods**:
+
+* `putClusterState(clusterState, callback)`: does a test-and-set write to the
+  cluster state node in ZK using the given `clusterState` object for the new
+  contents.  On success, invokes `callback` with no arguments.  On failure,
+  invokes `callback` with an Error describing the problem.
+
+**Events**:
+
+* `init` (arg `clusterState`): emitted once for the lifetime of this event
+  emitter.  `clusterState` is the cluster state found, an object of type
+  `clusterState` (see above).  **This is always the first event emitted by this
+  object.**
+* `clusterStateChange` (arg `clusterState`): emitted any time the `clusterState`
+  ZK node changes.
+* `activeChange` (arg `allActive`): emitted once, immediately after the first
+  `init` event, and again any time the directory of ephemeral nodes
+  (representing the set of peers in this cluster with active ZK sessions)
+  changes.  `allActive` is an array of `peer identifier`s.
+
+
+### PG interface
+
+**Methods**:
+
+**All three of these are asynchronous`.  None of these methods may be called
+while any asynchronous operations on the interface are outstanding.**
+
+* `reconfigure(pgConfig, callback)`: reconfigures postgres replication according
+  to the given configuration (see `pg config` above).  Invokes `callback` on
+  completion, with no arguments on success and an Error on failure.  This does
+  not start or stop postgres.  The caller must do that separately.
+* `start(callback)`: starts postgres with the last configuration specified to
+  `reconfigure`.  Invokes `callback` on completion, with no arguments on success
+  and an Error on failure.
+* `stop(callback)`; stops postgres.  Invokes `callback` on completion, with no
+  arguments on success and an Error on failure.
+
+There are these additional methods:
+
+* `getXLogLocation(callback)`: Fetches the last known Xlog position from
+  Postgres and returns it asynchronously to `callback`.  May return an error
+  to `callback` instead.  May fail (with an asynchronous, operational error) if
+  postgres is not online.
+
+**Events**:
+
+* `init`: emitted when the interface is ready
+* `caughtUp`: emitted after postgres has been started and is configured for
+  synchronous replication from an upstream source *and* the local WAL has caught
+  up to the upstream and synchronous replication has been engaged.
