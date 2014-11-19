@@ -65,7 +65,7 @@ contents are a JSON object that includes:
   be caught up to the primary (P) when the generation begins.
 * **A[]**, an ordered list of async peers, where the order defines the
   replication order
-* **init_wal**, the current position (a monotonically increasing integer) in P's
+* **init\_wal**, the current position (a monotonically increasing integer) in P's
   WAL when the current generation began
 
 Notes on cluster state:
@@ -73,8 +73,8 @@ Notes on cluster state:
 * The cluster moves atomically from one generation to the next, though obviously
   not all peers discover the change atomically.
 * When a new generation is **declared**, the primary for that generation writes
-  out a complete cluster state that contains G, P, S, A[], and init\_wal.  All
-  of these fields except for "A[]" will be immutable for the duration of this
+  out a complete cluster state that contains G, P, S, A, and init\_wal.  All
+  of these fields except for "A" will be immutable for the duration of this
   generation.
 * The first generation is declared when there is no previous generation and there
   are at least two peers' ephemeral nodes present.  This generation is declared
@@ -83,14 +83,14 @@ Notes on cluster state:
 * Subsequent generations may be declared in exactly two situations:
     * The primary for generation G may declare a new generation G+1 if it
       determines that S has failed (because S's ephemeral node disappears) *and*
-      at least one async from A[] is still present.  P will select a new S from
-      the head of A[] and declare a new generation.  If the old S comes back, it
+      at least one async from A is still present.  P will select a new S from
+      the head of A and declare a new generation.  If the old S comes back, it
       will see that it is no longer S.
     * The secondary for generation G may declare a new generation G+1 if it
       determines that P has failed (because P's ephemeral node disappears) *and*
-      at least one async from A[] is still present *and* its own WAL log
-      position is at least as large as "init_wal".  If S's WAL position is less
-      than "init_wal", then S was never fully caught up to P and the system
+      at least one async from A is still present *and* its own WAL log
+      position is at least as large as "init\_wal".  If S's WAL position is less
+      than "init\_wal", then S was never fully caught up to P and the system
       cannot proceed until P returns or an operator intervenes.
 * When a generation is initially declared, S is usually not yet caught up to P.
   The cluster may be made available read-only, but it's not until S establishes
@@ -108,7 +108,7 @@ As a result of these rules, we can say that:
   test-and-set operation to make sure that only one of them can successfully do
   this.
 * Additionally, every new generation of cluster state includes a valid
-  assignment of P, S, and A[] such that:
+  assignment of P, S, and A such that:
     * P can replicate to S
     * S can replicate to A0
     * Ai can replicate to A(i+1)
@@ -168,7 +168,7 @@ assigned as S.  As a result, the new cluster state is derived as:
   is A0, the first async peer.
 * **A**: the ordered list from the previous generation with A0 (the head of the
   list) removed
-* **init_wal**: the current position in P's WAL
+* **init\_wal**: the current position in P's WAL
 
 This state is written with a test-and-set operation over the original state.  If
 that fails, go to step 1 of the algorithm above.  If this operation succeeds,
@@ -202,10 +202,10 @@ proceed to "Assume the role of primary" below.
 
 ### Assume the role of async
 
-1. Find our entry in the list A[] of async peers.  The previous entry (or S, if
-   we're the first entry in A[]) is our upstream source.  Begin replicating from
+1. Find our entry in the list A of async peers.  The previous entry (or S, if
+   we're the first entry in A) is our upstream source.  Begin replicating from
    the upstream source.
-2. If A[] changes, then go to step 1.
+2. If A changes, then go to step 1.
 3. If G changes, then go to step 1 in the main algorithm above.
 
 
@@ -217,9 +217,9 @@ replication down the chain and requires rolling back changes on one of them in
 order to resume replication.
 
 When a new async joins, it creates its ephemeral node.  When the primary sees
-that, it appends the async to A[] in the cluster state.  When the async sees
+that, it appends the async to A in the cluster state.  When the async sees
 that, it begins replicating from the previous A, or from S if it's at the head
-of A[].  If the async goes away, the primary removes it from A[].  The peer
+of A.  If the async goes away, the primary removes it from A.  The peer
 behind the peer that failed must notice this and begin replicating from the next
 upstream peer.
 
