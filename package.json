@@ -7,6 +7,7 @@
 	"dependencies": {
 		"assert-plus": "0.1.2",
 		"bunyan": "0.20.0",
+		"extsprintf": "1.2.0",
 		"jsprim": "0.6.1",
 		"vasync": "1.6.1",
 		"verror": "1.4.0"
