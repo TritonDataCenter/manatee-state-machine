@@ -280,17 +280,17 @@ comparing the identities of two peers, only the `id` field is used.**
 `pg config` is a non-null object representing postgres configuration.  It always
 has this properties:
 
-* `role` (string): one of `'primary'`, `'standby'`, or `'none'`.
+* `role` (string): one of `'primary'`, `'sync'`, `'async'`, or `'none'`.
 
 If `role` is `'primary'`, then there's a `'downstream'` property which is the
 `pgUrl` field for the corresponding manatee peer (see `peer identifier` above).
 In this case, the `upstream` property is `null`.
 
-If `role` is `'standby'`, then there's an `'upstream'` property which is the
-`pgUrl` field for the corresponding manatee peer (see `peer identifier` above).
-In this case, the `downstream` property is `null` (even though there may be a
-downstream, because this information is not part of the postgres configuration
-for this peer).
+If `role` is `'sync'` or `'async'`, then there's an `'upstream'` property which
+is the `pgUrl` field for the corresponding manatee peer (see `peer identifier`
+above).  In this case, the `downstream` property is `null` (even though there
+may be a downstream, because this information is not part of the postgres
+configuration for this peer).
 
 If `role` is `'none'`, then replication is not configured at all, and
 `'upstream'` and `'downstream'` are both null.
@@ -304,7 +304,7 @@ For examples:
     }
 
     {
-        "role": "standby",
+        "role": "sync",
         "upstream": "tcp://postgres@10.77.77.7:5432/postgres",
         "downstream": null
     }
