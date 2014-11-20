@@ -13,7 +13,7 @@ JSSTYLE		 = jsstyle
 JSL_CONF_NODE	 = jsl.node.conf
 NPM		 = npm
 
-JS_FILES	:= $(shell find lib -name '*.js')
+JS_FILES	:= bin/msim $(shell find lib -name '*.js')
 JSON_FILES	 = package.json
 JSL_FILES_NODE	 = $(JS_FILES)
 JSSTYLE_FILES	 = $(JS_FILES)
