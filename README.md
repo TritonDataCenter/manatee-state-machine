@@ -364,7 +364,8 @@ There are these additional methods:
 
 * `getXLogLocation(callback)`: Fetches the last known Xlog position from
   Postgres and returns it asynchronously to `callback`.  May return an error
-  to `callback` instead.  XXX: can this work even when postgres is not online?
+  to `callback` instead.  May fail (with an asynchronous, operational error) if
+  postgres is not online.
 
 **Events**:
 
