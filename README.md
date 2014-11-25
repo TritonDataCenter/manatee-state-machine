@@ -378,7 +378,5 @@ There are these additional methods:
 
 **Events**:
 
-* `init`: emitted when the interface is ready
-* `caughtUp`: emitted after postgres has been started and is configured for
-  synchronous replication from an upstream source *and* the local WAL has caught
-  up to the upstream and synchronous replication has been engaged.
+* `init`: emitted when the interface is ready with a boolean indicating whether
+  postgres is running
