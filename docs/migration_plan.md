@@ -56,40 +56,47 @@ Notes   --------------------^
 Knowing how components work today, we can see how old manatees and newly
 upgraded manatees can work together.  In order for it to work we need to make
 sure that during migration the cluster state accurately reflects the
-election ordering.  As long as election ordering and and cluster state are in
+election ordering.  **As long as election ordering and and cluster state are in
 agreement during the whole process, we can safely upgrade components
-(Manatees and Morays) independently.
+(Manatees and Morays) independently.**
 
 Walking through the deployment order and the cluster state it can be made to
-work if something preemptively puts the [A, C', B'] before C is deployed.  Then
+work if something preemptively puts the [A, C', B'] after updating C'.  Then
 this is what a migration deployment would look like:
 
 ```
-         Init  Update-C  Update-B  Update-A  A-rejoins
-Primary  A     A         A         C'        C'
-         |     |\        |         |         |
-Sync     B     B C'      C'        B'        B'
-         |               |                   |
-Async    C               B'                  A'
+         Init  Update-C  Manual State  Update-B  Update-A  A-rejoins
+Primary  A     A         A             A         C'        C'
+         |     |         |\            |         |         |
+Sync     B     B         B C'          C'        B'        B'
+         |                             |                   |
+Async    C     C'                      B'                  A'
 
 Notes    ^
-         Cluster state [A, C, B] is put "manually"
+         Initial Cluster State
 
-         -----^
-         C' decides it is the Sync based on the topology.  It doesn't know any
-         better that B is still the actual sync (and doesn't need to).
+         ------^
+         C' is reprovisioned.  The new Manatee sees that the DB is already
+         inited, and so stops and waits for a cluster state update.
 
          ---------------^
+         An operator manually writes the topology: [A, C, B], even though that
+         is a lie at this point.  C' sees it is the Sync based on the topology.
+         It doesn't know any better that B is still the actual sync (and doesn't
+         need to).
+
+         -----------------------------^
+         B is reprovisioned...
          A sees B drop out, reconfigures C' as sync.
          C' stays where it was.
          B' takes its place where the cluster state says it should.
 
-         --------------------------^
+         ---------------------------------------^
          C' sees that A has failed, writes cluster state [C, B].
          C' is the first in /election, morays connect to C' as primary.
          B' sees the cluster state change, reconfigures itself as sync.
 
-         ------------------------------------^
+         --------------------------------------------------^
          C' sees that A' has joined, writes [C, B, A]
          A' sees the cluster state change, configures itself as an async.
 ```
@@ -168,10 +175,7 @@ morays are rolled out before manatees.
    "InternalError: unable to create bucket; caused by error: cannot execute
    INSERT in a read-only transaction" So the answer is "yes", morays talking to
    either an old sync or an old async is safe.
-
-## Open Questions
-
 1. Should we attempt to automate putting the preemptive cluster state there by
-   a newly deployed C'?
-1. Should we make Morays backward compatible (as described above)?
-1. What should the init_WAL be when initial cluster state is written?
+   a newly deployed C'?  No.
+1. Should we make Morays backward compatible (as described above)?  Yes.
+1. What should the init_WAL be when initial cluster state is written?  0/0000000
