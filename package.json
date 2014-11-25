@@ -4,6 +4,7 @@
 	"license": "MPL-2.0",
 	"author": "Joyent (joyent.com)",
 	"private": true,
+	"main": "lib/manatee-peer.js",
 	"dependencies": {
 		"assert-plus": "0.1.2",
 		"bunyan": "0.20.0",
