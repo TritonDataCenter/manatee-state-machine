@@ -159,7 +159,7 @@ As a result of these rules, we can say that:
 A new generation is declared in one of three cases:
 
 * during initial cluster setup (when there's no cluster state), by the peer with
-  the lowest-numbered ephemeral node, when there's at least one other peer
+  the lowest-ordered ephemeral node, when there's at least one other peer
   present;
 * when a sync S in generation G declares that P has failed, and S has caught up
   to where P was at the start of generation G, and there's another async A0
@@ -220,10 +220,8 @@ proceed to "Assume the role of primary" below.
 
 ### Async peer management
 
-The primary has to maintain the list of async peers, and it must try to avoid
-shuffling the order, since the reversal of two peers in this list will break
-replication down the chain and requires rolling back changes on one of them in
-order to resume replication.
+The primary has to maintain the list of async peers, and it should try to avoid
+shuffling the order so that the replication chain flows down the line of asyncs.
 
 When a new async joins, it creates its ephemeral node.  When the primary sees
 that, it appends the async to A in the cluster state.  When the async sees
@@ -257,15 +255,18 @@ From each peer's perspective, the only events related to ZK are:
 Several parts of the interface refer to individual manatee peers.  Identifiers
 are non-null objects with several properties:
 
-* `id` (string): an immutable, unique identifier for this peer
+* `id` (string): an immutable, unique identifier for this peer.  For backward
+   compatibility reasons the format is `ip:postgresPort:backupPort`.
+* `pgUrl` (string, postgres URL): URL for contacting the postgres peer.  This is
+  unique.
+* `backupUrlUrl` (string, http URL): URL for requesting a backup from this
+  peer.
 * `zoneId` (string): the hostname of the manatee peer, for operator reference
   only.  This is not guaranteed to be unique, and should not be used
   programmatically.
 * `ip` (string, IPv4 address): an IP address for the manatee peer, for operator
   reference only.  This is not guaranteed to be unique, and should not be used
   programmatically.
-* `pgUrl` (string, postgres URL): URL for contacting the postgres peer.  This is
-  unique.
 
 **The state machine implementation does not interpret any of these fields.  For
 comparing the identities of two peers, only the `id` field is used.**
@@ -309,12 +310,18 @@ For examples:
     {
         "role": "primary",
         "upstream": null,
-        "downstream": "tcp://postgres@10.77.77.7:5432/postgres"
+        "downstream": {
+            "id": "10.77.77.7:5432:12345",
+            "pgUrl": "tcp://postgres@10.77.77.7:5432/postgres"
+            "backupUrl": "http://10.77.77.7:12345",
+            "zoneId": "3360a2f9-4da3-476f-9fb0-915b9f01fecd",
+            "ip": "10.77.77.7"
+        }
     }
 
     {
         "role": "sync",
-        "upstream": "tcp://postgres@10.77.77.7:5432/postgres",
+        "upstream": { "id": "10.77.77.7:5432:12345", ... }
         "downstream": null
     }
 
@@ -340,9 +347,10 @@ interface and the postgres interface.
 
 **Events**:
 
-* `init` (arg `clusterState`): emitted once for the lifetime of this event
-  emitter.  `clusterState` is the cluster state found, an object of type
-  `clusterState` (see above).  **This is always the first event emitted by this
+* `init` (arg `status`): emitted once for the lifetime of this event emitter.
+  It has two properties: (1) `clusterState` is the cluster state found, an
+  object of type `clusterState` (see above) and (2) `active`, the list of active
+  peers in Zookeeper.  **This is always the first event emitted by this
   object.**
 * `clusterStateChange` (arg `clusterState`): emitted any time the `clusterState`
   ZK node changes.
