@@ -138,11 +138,14 @@ As a result of these rules, we can say that:
 3. If at any point the cluster state changes, reread it.  If G has changed, go
    back to step 1.
 4. Read the current cluster state.
-    1. If there is no current state, then the cluster has never been set up yet.
-        1.  If there are other ephemeral nodes in the cluster, and our ephemeral
+    1. If there is no current state, then the cluster may have never been set
+       up.
+        1. If postgres has been set up in the past on this node, wait for a
+           few seconds and go to step 1.  This indicates migration.
+        2. If there are other ephemeral nodes in the cluster, and our ephemeral
             node is the first one according to the ZK-defined order, then go to
             "Declaring a generation" below.
-        2. Otherwise, wait a few seconds and go to step 1.
+        3. Otherwise, wait a few seconds and go to step 1.
     2. If the current state indicates that we are the primary, then go to
        "Assume the role of primary" below.
     3. If the current state indicates that we are the sync, then go to "Assume
@@ -391,5 +394,6 @@ There are these additional methods:
 
 **Events**:
 
-* `init`: emitted when the interface is ready with a boolean indicating whether
-  postgres is running
+* `init`: emitted when the interface is ready with a struct indicating postgres
+  status: `online` indicating if postgres is already running and `setup`,
+  indicating if postgres has been previously set up on this node.
