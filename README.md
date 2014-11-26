@@ -284,6 +284,11 @@ comparing the identities of two peers, only the `id` field is used.**
   `async[i-1]`, and `async[0]` replicates from `sync`.
 * `initWal` (string, postgres WAL location): the WAL of the primary when this
   generation began.
+* `freeze`: if this field is present and non-null, then no peers should make any
+  changes to the cluster state (including both takeovers and incorporating new
+  async peers).  If present, it may be a boolean or an object describing who
+  froze the cluster and why.  This is currently used during migration from older
+  versions.
 
 ### pg config
 
