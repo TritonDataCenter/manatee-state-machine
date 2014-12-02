@@ -130,7 +130,7 @@ both slaving from the original primary.  You can check that the cluster state
 is correct by running `async$ manatee-adm state | json`.
 
 Note that since this is a non-standard configuration `manatee-adm status` will
-not look like a "healthy" manatee shard from an non-upgraded zone:
+**not** look like a "healthy" manatee shard:
 
 ```
 [root@4afba482 (postgres) ~]$ manatee-adm status | json
@@ -181,9 +181,9 @@ not look like a "healthy" manatee shard from an non-upgraded zone:
 ## Reprovision Sync
 
 Now reprovision the sync to the same version of software that the original async
-was upgraded to.  Now that the state has been backfilled, the sync will take its
-place as the async, slaving from the original async (now the sync).  You can see
-this in the original sync's logs:
+was upgraded to.  Since the cluster state has been backfilled, the sync will
+take its place as the async, slaving from the original async (now the sync).
+You can see this in the original sync's logs:
 
 ```
 [2014-12-02T18:47:39.927Z]  INFO: manatee-sitter/cluster/629 on 4afba482-7670-4c
@@ -311,10 +311,10 @@ anatee-state-machine/lib/manatee-peer.js:673): backing off
 ## Reprovision Primary
 
 Now reprovision the primary.  At this point one of two things will happen.  If
-the reprovision tool longer than the zookeeper node timeout, the sync will take
-over.  If the primary reprovisioned before the timeout, the primary will remain
-the primary.  In our case, the reprovision took longer, so we can see the
-original async taking over as the primary:
+the reprovision took longer than the zookeeper node timeout, the sync will take
+over as primary.  If the primary finished reprovisioning before the timeout, the
+primary will remain the primary.  In our case, the reprovision took longer, so
+we can see the original async taking over as the primary:
 
 ```
 [2014-12-02T19:01:52.451Z]  INFO: manatee-sitter/cluster/99642 on d0c715ab-1d55-
