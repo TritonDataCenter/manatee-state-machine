@@ -33,12 +33,11 @@ Recall that Manatee is a cluster of three or more postgres instances such that:
   to maximize uptime and to never lose data.
 
 Any configuration of three or more peers can use the algorithm described here.
-Manatee can be operated in single-peer mode, but that's uninteresting because it
-cannot survive any failures and the state machine is trivial: always behave as
-primary.  Two-peer mode is analogous to two manatee nodes with no async (a
-degraded state).  Operationally this mode does not make sense with this
-algorithm since it will never failover (the sync will never attempt a takeover
-without an async).
+Manatee can be operated in single-peer mode; details on that are described under
+"One-node-write mode" below.  Two-peer mode is analogous to two manatee nodes
+with no async (a degraded state).  Operationally this mode does not make sense
+with this algorithm since it will never failover (the sync will never attempt a
+takeover without an async).
 
 There are two state machines here.  There's an overall cluster state, which is
 ultimately "unavailable", "read-only", or "read-write", and has an additional
@@ -249,6 +248,52 @@ From each peer's perspective, the only events related to ZK are:
   reconnection.
 
 
+## One-node-write mode (ONWM)
+
+Manatee supports limited use of one-node-write mode, which means that a single
+peer is allowed to become a writable primary with no replication attached.
+There are two main cases where this is used:
+
+* during bootstrap of SmartDataCenter, where a writable Manatee peer is required
+  for deployment of a second Manatee peer, after which the cluster will be
+  switched into normal mode
+* for tiny non-production deployments where the added durability of a full
+  cluster is not important and the resources required to run it are not
+  available but the surrounding architecture assumes the presence of Manatee.
+  This is true for the SDC COAL deployment, which is a tiny SDC instance used
+  for development and testing.
+
+The expectation is that ONWM clusters only have one peer.  The only time other
+peers are expected to show up is in preparation for transitioning the cluster to
+normal mode.  In ONWM, ZooKeeper is still used to record cluster state, but an
+additional field called "oneNodeWriteMode" will be true, the cluster will be
+frozen, and the "sync" field will be null.
+
+To enable this mode, a peer must be configured with ONWM enabled and the cluster
+must not have previously been set up.  Once that happens:
+
+* When the peer starts up, it will immediately set up the cluster for
+  one-node-write mode, with itself as the primary.  (In normal mode, it would
+  wait for another peer to show up before setting up the cluster.)
+* The primary peer in ONWM will not react to any other peers joining the
+  cluster.  It will never assign a sync, assign asyncs, or declare
+  new generations.
+* Since other peers joining the cluster will never be assigned as syncs, let
+  alone asyncs, they will never attempt to take over from the primary.
+
+To transition a cluster into normal mode:
+
+1. Deploy a new peer *not* configured for ONWM.  This peer will immediately
+   become unassigned.
+2. Disable the primary peer.
+3. Reconfigure the primary peer to disable ONWM.
+4. Enable the primary peer.
+5. Unfreeze the cluster.
+
+The primary will come up as primary, see that the cluster must be transitioning
+to normal mode, and declare a new generation with the newly-deployed peer as the
+sync.  After that, the cluster behaves like a normal cluster.
+
 # Implementation notes
 
 ## Data structures
@@ -262,7 +307,7 @@ are non-null objects with several properties:
    compatibility reasons the format is `ip:postgresPort:backupPort`.
 * `pgUrl` (string, postgres URL): URL for contacting the postgres peer.  This is
   unique.
-* `backupUrlUrl` (string, http URL): URL for requesting a backup from this
+* `backupUrl` (string, http URL): URL for requesting a backup from this
   peer.
 * `zoneId` (string): the hostname of the manatee peer, for operator reference
   only.  This is not guaranteed to be unique, and should not be used
@@ -292,6 +337,8 @@ comparing the identities of two peers, only the `id` field is used.**
   async peers).  If present, it may be a boolean or an object describing who
   froze the cluster and why.  This is currently used during migration from older
   versions.
+* `oneNodeWriteMode`: if true, then the cluster is configured for one-node-write
+  mode.  See above for details.
 
 ### pg config
 

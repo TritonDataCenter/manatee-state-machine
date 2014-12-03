@@ -33,6 +33,11 @@ function main()
 	});
 
 	sim.startRepl();
+
+	sim.on('error', function () {
+		console.error('%s: bailing due to fatal error', arg0);
+		process.exit(1);
+	});
 }
 
 main();
