@@ -27,7 +27,21 @@ that the Morays have been upgraded to a version that is compatible.
 
 To verify:
 
-***TODO***
+In SDC or Manta, get the image version and validate that the version timestamp
+is greater than `20141204T233537Z`.  For example:
+
+```
+[root@headnode (coal) ~]# sdc-imgapi /images/$(sdc-vmapi /vms/$(vmadm lookup alias=~moray) | json -Ha image_uuid) | json -Ha version
+master-20141204T233537Z-g4861422
+```
+
+Outside of SDC and Manta, you'll need to determine the git sha of the code you
+are running and verify it is past this commit:
+
+```
+commit 486142204a3347d9bd356647a39c7ea113a62fc3
+Date:   Thu Dec 4 23:34:19 2014 +0000
+```
 
 ## Reprovision Async
 
