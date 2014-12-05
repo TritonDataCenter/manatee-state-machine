@@ -18,7 +18,7 @@ var sim, cmds;
 var node1url = 'tcp://postgres@10.0.0.1:5432/postgres';
 var node2url = 'tcp://postgres@10.0.0.2:5432/postgres';
 var node3url = 'tcp://postgres@10.0.0.3:5432/postgres';
-var asyncState, syncState;
+var asyncState, syncState, deposedState;
 var primState1, primState2, primState3, primState4;
 
 asyncState = {
@@ -109,6 +109,26 @@ primState4 = mod_jsprim.deepCopy(primState3);
 primState4.zkpeers.push('node2');
 primState4.zkstate.async.push('node2');
 
+deposedState = {
+	'role': 'deposed',
+	'zkstate': {
+	    'generation': 5,
+	    'primary': 'node3',
+	    'sync': 'node2',
+	    'async': [ 'node1' ],
+	    'initWal': '0/00000028'
+	},
+	'zkpeers': [ 'node1', 'node3', 'node2' ],
+	'pg': {
+	    'online': false,
+	    'config': {
+	        'role': 'none',
+		'upstream': null,
+		'downstream': null
+	    }
+	}
+};
+
 sim = mod_test.createTestSimulator();
 /* BEGIN JSSTYLED */
 cmds = [
@@ -116,12 +136,13 @@ cmds = [
     { 'cmd': 'echo', 'args': [ 'test: validating initial zk state' ] },
     { 'cmd': 'zk', 'check': {
 	'clusterState': null,
-	'activeNodes': [ 'node1' ]
+	'activeNodes': [  ]
     } },
     { 'cmd': 'echo', 'args': [ '' ] },
 
     /* validate results of addpeer */
     { 'cmd': 'echo', 'args': [ 'test: addpeer()' ] },
+    { 'cmd': 'addpeer', 'args': [ 'node1' ] },
     { 'cmd': 'addpeer' },
     { 'cmd': 'addpeer' },
     { 'cmd': 'zk', 'args': [ true ], 'check': {
@@ -227,12 +248,34 @@ cmds = [
     { 'cmd': 'echo', 'args': [ '' ] },
 
     /* Now have the sync fail.  Our peer should promote the async. */
-    { 'cmd': 'echo', 'args': [ 'test: test: sync fail' ] },
+    { 'cmd': 'echo', 'args': [ 'test: sync fail' ] },
     { 'cmd': 'rmpeer', 'args': [ 'node2' ] },
     { 'cmd': 'peer', 'check': primState3 },
     { 'cmd': 'addpeer', 'args': [ 'node2' ] },
     { 'cmd': 'peer', 'check': primState4 },
-    { 'cmd': 'echo', 'args': [ '' ] }
+    { 'cmd': 'echo', 'args': [ '' ] },
+
+    /* Test out adding a new async peer. */
+    { 'cmd': 'echo', 'args': [ 'test: add async' ] },
+    { 'cmd': 'addpeer' },
+    { 'cmd': 'peer', 'check': {
+	'zkstate': {
+	    'generation': primState4.zkstate.generation,
+	    'async': [ 'node2', 'node4' ]
+	}
+    } },
+    { 'cmd': 'echo', 'args': [ '' ] },
+
+    /* Test out removing an async peer. */
+    { 'cmd': 'echo', 'args': [ 'test: remove async' ] },
+    { 'cmd': 'rmpeer', 'args': [ 'node4' ] },
+    { 'cmd': 'peer', 'check': primState4 },
+    { 'cmd': 'echo', 'args': [ '' ] },
+
+    /* Finally, have someone depose our peer. */
+    { 'cmd': 'echo', 'args': [ 'test: primary deposed' ] },
+    { 'cmd': 'depose' },
+    { 'cmd': 'peer', 'check': deposedState  }
 ];
 /* END JSSTYLED */
 
