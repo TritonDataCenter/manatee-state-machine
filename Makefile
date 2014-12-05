@@ -13,7 +13,7 @@ JSSTYLE		 = jsstyle
 JSL_CONF_NODE	 = jsl.node.conf
 NPM		 = npm
 
-JS_FILES	:= bin/msim $(shell find lib -name '*.js')
+JS_FILES	:= bin/msim $(shell find lib test -name '*.js')
 JSON_FILES	 = package.json
 JSL_FILES_NODE	 = $(JS_FILES)
 JSSTYLE_FILES	 = $(JS_FILES)
@@ -25,5 +25,10 @@ all:
 
 manatee.png: manatee.dot
 	dot -Tpng $^ -o $@
+
+test:
+	node test/tst.test.js
+	node test/tst.basic.js
+	@echo all tests passed
 
 include Makefile.targ
