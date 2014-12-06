@@ -34,6 +34,7 @@ test:
 	node test/tst.cluster_setup_immed.js
 	node test/tst.cluster_setup_delay.js
 	node test/tst.cluster_setup_passive.js
+	node test/tst.noflap.js
 	@echo all tests passed
 
 include Makefile.targ
