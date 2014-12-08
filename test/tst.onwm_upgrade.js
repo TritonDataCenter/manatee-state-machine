@@ -152,4 +152,4 @@ cmds = [
 ];
 /* END JSSTYLED */
 
-mod_test.runTestCommands(sim, cmds);
+mod_test.runTestCommands(sim, cmds, process.argv[2] == '-v');

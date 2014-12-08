@@ -66,7 +66,7 @@ function createTestSimulator(options)
  *
  * Failures are fatal to the process.
  */
-function runTestCommands(sim, cmds)
+function runTestCommands(sim, cmds, verbose)
 {
 	var which = 0;
 
@@ -74,7 +74,7 @@ function runTestCommands(sim, cmds)
 	    'inputs': cmds,
 	    'func': function runCommandsWorker(cmd, callback) {
 		var label = mod_util.format('command %d', which++);
-		runOneTestCommand(sim, label, cmd, callback);
+		runOneTestCommand(sim, label, cmd, verbose, callback);
 	    }
 	}, function (err) {
 		if (err)
@@ -82,15 +82,16 @@ function runTestCommands(sim, cmds)
 	});
 }
 
-function runOneTestCommand(sim, label, cmd, callback)
+function runOneTestCommand(sim, label, cmd, verbose, callback)
 {
 	var wait = cmd.hasOwnProperty('wait') ? cmd.wait : null;
-	if (cmd.cmd != 'echo')
+	if (cmd.cmd != 'echo' && verbose)
 		console.error('running command: ', cmd.cmd,
 		    cmd.hasOwnProperty('args') ? cmd.args : '');
 	sim.runCmd(cmd.cmd, wait, 3000, cmd.args, function (err, result) {
 		if (!err && cmd.check) {
-			console.error('checking result: ', result);
+			if (verbose)
+				console.error('checking result: ', result);
 			err = deepCheckSubset('result', result, cmd.check);
 		}
 
