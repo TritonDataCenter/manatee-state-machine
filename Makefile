@@ -35,6 +35,10 @@ test:
 	node test/tst.cluster_setup_delay.js
 	node test/tst.cluster_setup_passive.js
 	node test/tst.noflap.js
+	node test/tst.onwm.js
+	node test/tst.onwm_upgrade.js
+	node test/tst.onwm_newpeer.js
+	node test/tst.cluster_setup_onwm.js
 	@echo all tests passed
 
 include Makefile.targ

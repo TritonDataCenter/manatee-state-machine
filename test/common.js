@@ -25,15 +25,22 @@ exports.deepCheckSubset = deepCheckSubset;
 /*
  * Instantiates a one-node Manatee simulator for automated testing.
  */
-function createTestSimulator()
+function createTestSimulator(options)
 {
-	var sim = createSimulator({
+	var args, sim, key;
+
+	args = {
 	    'progName': mod_path.basename(process.argv[1]),
 	    'logLevel': 'debug',
 	    'input': process.stdin,
 	    'output': process.stdout,
 	    'error': process.stderr
-	});
+	};
+
+	for (key in options)
+		args[key] = options[key];
+
+	sim = createSimulator(args);
 
 	sim.on('error', function (err) {
 		console.error('TEST FAILED: ', err.message);
