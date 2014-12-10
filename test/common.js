@@ -88,7 +88,7 @@ function runOneTestCommand(sim, label, cmd, verbose, callback)
 	if (cmd.cmd != 'echo' && verbose)
 		console.error('running command: ', cmd.cmd,
 		    cmd.hasOwnProperty('args') ? cmd.args : '');
-	sim.runCmd(cmd.cmd, wait, 3000, cmd.args, function (err, result) {
+	sim.runCmd(cmd.cmd, wait, 6000, cmd.args, function (err, result) {
 		if (!err && cmd.check) {
 			if (verbose)
 				console.error('checking result: ', result);
