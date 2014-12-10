@@ -32,6 +32,8 @@ test:
 	node test/tst.start_primary.js
 	node test/tst.start_sync.js
 	node test/tst.start_deposed.js
+	node test/tst.start_primary_async.js
+	node test/tst.start_sync_async.js
 	node test/tst.cluster_setup_immed.js
 	node test/tst.cluster_setup_delay.js
 	node test/tst.cluster_setup_passive.js
