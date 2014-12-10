@@ -75,6 +75,7 @@ cmds = [
      * Now allow the peer to takeover by adding a new async.
      */
     { 'cmd': 'addpeer' },
+    { 'cmd': 'rebuild', 'args': [ 'node2' ], 'wait': 1000 },
     { 'cmd': 'peer', 'check': {
 	'role': 'primary',
 	'zkstate': {

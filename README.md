@@ -232,6 +232,25 @@ of A.  If the async goes away, the primary removes it from A.  The peer
 behind the peer that failed must notice this and begin replicating from the next
 upstream peer.
 
+### Deposed peers
+
+When a primary is deposed, in some cases it may be possible for the primary to
+resume service as an async without further intervention, but it many cases this
+is not possible.  (That's because when a takeover event occurs under load, the
+primary will typically have xlog entries not present on the other peers.  These
+entries correspond to uncommitted transactions.  Once the cluster starts taking
+writes after the takeover, the deposed peer's transaction log actually diverges
+from the actual cluster's log -- i.e., both have entries for xlog position X,
+but they're different.  This is only recoverable by rolling back the primary.)
+
+Since the common case in production is that this will not be possible, primary
+peers that are deposed move into an explicit "deposed" state, and the only way
+to remove them from this state is by manual action that rebuilds the primary
+from one of the other peers.  This operation is documented in the user guide.
+
+When a peer is deposed, it shuts down its postgres instance and waits for
+operator intervention.
+
 
 ## ZK sessions
 
@@ -330,6 +349,8 @@ comparing the identities of two peers, only the `id` field is used.**
 * `async` (array of peer identifiers, see above): the list of asynchronous
   peers, in replication order.  That is, `async[i]` replicates from
   `async[i-1]`, and `async[0]` replicates from `sync`.
+* `deposed` (array of peer identifiers, see above): the list of previous
+  primaries which need to be rebuilt before being brought back into service
 * `initWal` (string, postgres WAL location): the WAL of the primary when this
   generation began.
 * `freeze`: if this field is present and non-null, then no peers should make any

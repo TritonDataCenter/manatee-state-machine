@@ -81,6 +81,7 @@ cmds = [
 	},
 	'sync': null,
 	'async': [],
+	'deposed': [],
 	'initWal': '0/00000000',
 	'freeze': true,
 	'oneNodeWriteMode': true

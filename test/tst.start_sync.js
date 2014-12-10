@@ -131,6 +131,7 @@ cmds = [
     { 'cmd': 'echo', 'args': [ 'test: catch up and remove primary' ] },
     { 'cmd': 'catchUp' },
     { 'cmd': 'rmpeer', 'args': [ 'node3' ] },
+    { 'cmd': 'rebuild', 'args': [ 'node3' ] },
     { 'cmd': 'peer', 'check': primState1 },
     { 'cmd': 'addpeer', 'args': [ 'node3' ] },
     { 'cmd': 'peer', 'check': primState2 },

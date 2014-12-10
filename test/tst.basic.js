@@ -28,6 +28,7 @@ asyncState = {
 	    'primary': 'node2',
 	    'sync': 'node3',
 	    'async': [ 'node1' ],
+	    'deposed': [],
 	    'initWal': '0/00000000'
 	},
 	'zkpeers': [ 'node1', 'node2', 'node3' ],
@@ -67,7 +68,8 @@ primState1 = {
 	    'generation': 3,
 	    'primary': 'node1',
 	    'sync': 'node2',
-	    'async': [ ],
+	    'async': [],
+	    'deposed': [ 'node3' ],
 	    'initWal': '0/00000014'
 	},
 	'zkpeers': [ 'node1', 'node2' ],
@@ -82,8 +84,9 @@ primState1 = {
 };
 
 primState2 = mod_jsprim.deepCopy(primState1);
-primState2.zkpeers.push('node3');
+primState2.zkstate.deposed.shift();
 primState2.zkstate.async.push('node3');
+primState2.zkpeers.push('node3');
 
 primState3 = {
 	'role': 'primary',
@@ -91,7 +94,8 @@ primState3 = {
 	    'generation': 4,
 	    'primary': 'node1',
 	    'sync': 'node3',
-	    'async': [ ],
+	    'async': [],
+	    'deposed': [],
 	    'initWal': '0/0000001e'
 	},
 	'zkpeers': [ 'node1', 'node3' ],
@@ -115,7 +119,8 @@ deposedState = {
 	    'generation': 5,
 	    'primary': 'node3',
 	    'sync': 'node2',
-	    'async': [ 'node1' ],
+	    'async': [],
+	    'deposed': [ 'node1' ],
 	    'initWal': '0/00000028'
 	},
 	'zkpeers': [ 'node1', 'node3', 'node2' ],
@@ -202,6 +207,7 @@ cmds = [
     /* Now depose the primary and make sure that our peer comes up as a sync. */
     { 'cmd': 'echo', 'args': [ 'test: depose()' ] },
     { 'cmd': 'depose' },
+    { 'cmd': 'rebuild', 'args': [ 'node2' ] },
     { 'cmd': 'peer', 'check': syncState },
     { 'cmd': 'echo', 'args': [ '' ] },
 
@@ -243,6 +249,7 @@ cmds = [
     { 'cmd': 'catchUp' },
     { 'cmd': 'rmpeer', 'args': [ 'node3' ] },
     { 'cmd': 'peer', 'check': primState1 },
+    { 'cmd': 'rebuild', 'args': [ 'node3' ] },
     { 'cmd': 'addpeer', 'args': [ 'node3' ] },
     { 'cmd': 'peer', 'check': primState2 },
     { 'cmd': 'echo', 'args': [ '' ] },
