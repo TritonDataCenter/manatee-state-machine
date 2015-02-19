@@ -1,15 +1,11 @@
-# New Manatee state machine
+# Manatee state machine
 
 [Manatee](https://github.com/joyent/manatee) is a component of Joyent's
 [SmartDataCenter](https://github.com/joyent/sdc) and
 [Manta](https://github.com/joyent/manta) projects.
 
-This repo contains design documentation and initial implementation pieces for
-some upcoming Manatee design changes.  This repo is basically a testing ground.
-When ready, these pieces (docs and code) will be integrated into the main
-Manatee repository.  The Manatee changes corresponding to this work are part of
-the [MANATEE-118 branch of the main Manatee
-repository](https://github.com/joyent/manatee/tree/MANATEE-188).
+This repo contains design docs and implementation pieces for the state machine
+guts of Manatee version 2.
 
 
 ## Introduction
