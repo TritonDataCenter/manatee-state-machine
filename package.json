@@ -10,6 +10,7 @@
 		"bunyan": "0.20.0",
 		"extsprintf": "1.2.0",
 		"jsprim": "0.6.1",
+		"xlog": "git+https://github.com/chudley/node-xlog.git#42d762d84192fd5282b4317f8ba364a14d9a2d64",
 		"vasync": "1.6.1",
 		"verror": "1.4.0"
 	}
