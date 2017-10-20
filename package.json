@@ -10,7 +10,7 @@
 		"bunyan": "0.20.0",
 		"extsprintf": "1.2.0",
 		"jsprim": "0.6.1",
-		"pg-lsn": "git+https://github.com/chudley/node-pg-lsn.git#23c503d18838a8281ac6762ab10353ffc6b9ba23",
+		"pg-lsn": "1.0.0",
 		"vasync": "1.6.1",
 		"verror": "1.4.0"
 	}
