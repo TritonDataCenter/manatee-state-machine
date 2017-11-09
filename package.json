@@ -10,6 +10,7 @@
 		"bunyan": "0.20.0",
 		"extsprintf": "1.2.0",
 		"jsprim": "0.6.1",
+		"pg-lsn": "1.0.0",
 		"vasync": "1.6.1",
 		"verror": "1.4.0"
 	}
