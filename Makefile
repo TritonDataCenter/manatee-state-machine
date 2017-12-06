@@ -43,6 +43,7 @@ test:
 	node test/tst.onwm_newpeer.js
 	node test/tst.cluster_setup_onwm.js
 	node test/tst.freeze.js
+	node test/tst.promote.js
 	@echo all tests passed
 
 include Makefile.targ
