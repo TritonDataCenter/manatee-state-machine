@@ -392,20 +392,21 @@ comparing the identities of two peers, only the `id` field is used.**
   versions.
 * `oneNodeWriteMode`: if true, then the cluster is configured for one-node-write
   mode.  See above for details.
-* `promote`: an object containing the intent of an operator-initiated promotion
-  for an individual peer.  See below for details.
+* `promote`: an optional object containing the intent of an operator-initiated
+  promotion for an individual peer.  See below for details.
 
 #### clusterState.promote
 
-`promote` is an object that is validated separately to the clusterState object.
-Its properties are expected to be as follows:
+`promote` is an optional object that is validated separately to the clusterState
+object.  Its properties are expected to be as follows:
 
 * `id` (string): id of the peer to be promoted (see "peer identifier")
 * `role` (string): current role of the peer to be promoted
 * `asyncIndex` (integer): position in the async chain (if "role" is "async")
 * `generation` (integer): generation of the cluster that the promotion is taking
   place in
-* `time` (string): deadline for the promotion to happen within
+* `expireTime` (string): time that a promotion must happen within in the format
+  that jsprim's `parseDateTime` method will accept
 
 ### pg config
 
