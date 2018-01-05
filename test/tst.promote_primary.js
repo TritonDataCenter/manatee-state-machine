@@ -54,7 +54,7 @@ cmds = [
 	'role': 'async',
 	'asyncIndex': 0,
 	'generation': 1,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
     { 'cmd': 'zk', 'check': {
 	'clusterState': {
@@ -66,15 +66,15 @@ cmds = [
 	},
 	'activeNodes': activeNodes
     } },
+
     { 'cmd': 'echo', 'args': [ 'test: promote last async' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': 3,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'log', 'args': [ 10 ] },
     { 'cmd': 'zk', 'check': {
 	'clusterState': {
 	    'generation': 2,
@@ -85,13 +85,14 @@ cmds = [
 	},
 	'activeNodes': activeNodes
     } },
+
     { 'cmd': 'echo', 'args': [ 'test: promote second async' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node5',
 	'role': 'async',
 	'asyncIndex': 1,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
     { 'cmd': 'zk', 'check': {
 	'clusterState': {
@@ -103,15 +104,17 @@ cmds = [
 	},
 	'activeNodes': activeNodes
     } },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (promote primary)' ] },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (promotePrimary)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node1',
 	'role': 'primary',
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (deadline missed)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (expireTimePassed)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node5',
 	'role': 'async',
@@ -119,73 +122,78 @@ cmds = [
 	'generation': 2,
 	'expireTime': mod_jsprim.iso8601(new Date())
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (invalid id/role)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (invalidIdAtRole)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node4',
 	'role': 'sync',
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (asyncIndex/id mismatch)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (invalidIdAtAsyncIndex)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': 2,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [
-	'test: ignore (asyncIndex out of upper range)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (asyncIndexUpperOOR)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': 999,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [
-	'test: ignore (asyncIndex out of lower range)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (asyncIndexLowerOOR)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': -1,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [
-	'test: ignore (generation out of lower range)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (generationLowerOOR)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': 1,
-	'generation': -1,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'generation': 100,
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (generation incorrect)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (generationMismatch)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': 1,
 	'generation': 1,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (generation is a string)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (generationInvalid)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
 	'asyncIndex': 1,
 	'generation': 'test',
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (bad expireTime)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (expireTimeInvalid)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node2',
 	'role': 'async',
@@ -193,31 +201,34 @@ cmds = [
 	'generation': 2,
 	'expireTime': 'test'
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (nonexistent id)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (nonexistentId)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node999',
 	'role': 'sync',
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (id missing)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (idMissing)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'role': 'async',
 	'asyncIndex': 1,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState },
-    { 'cmd': 'echo', 'args': [ 'test: ignore (invalid role)' ] },
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
+
+    { 'cmd': 'echo', 'args': [ 'test: ignore (invalidRole)' ] },
     { 'cmd': 'promote', 'args': [ {
 	'id': 'node1',
 	'role': 'test',
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date('2017-12-31T10:00:00Z'))
+	'expireIn': 200
     } ] },
-    { 'cmd': 'zk', 'check': ignoredState }
+    { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 }
 ];
 
 mod_test.runTestCommands(sim, cmds, process.argv[2] == '-v');

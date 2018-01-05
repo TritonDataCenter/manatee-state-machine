@@ -58,7 +58,7 @@ cmds = [
 	'id': 'node1',
 	'role': 'sync',
 	'generation': 1,
-	'expireIn': 1000
+	'expireIn': 200
     } ] },
     { 'cmd': 'zk', 'check': {
 	'clusterState': {
@@ -68,12 +68,7 @@ cmds = [
 	    'async': [ ],
 	    'initWal': '0/00000000'
 	}
-    }, 'wait': 1100 },
-	/*
-	 * These are causing takeovers because the promote object is still
-	 * stored on ZooKeeper, so they act on the request when any new peers
-	 * are added.
-	 */
+    }, 'wait': 300 },
     { 'cmd': 'addpeer' },
     { 'cmd': 'addpeer' },
     { 'cmd': 'addpeer' },
@@ -101,8 +96,8 @@ cmds = [
 	'id': 'node1',
 	'role': 'sync',
 	'generation': 1,
-	'expireIn': 1000
-    } ], 'wait': 1100 },
+	'expireIn': 200
+    } ], 'wait': 300 },
     { 'cmd': 'zk', 'check': {
 	'clusterState': {
 	    'generation': 2,
