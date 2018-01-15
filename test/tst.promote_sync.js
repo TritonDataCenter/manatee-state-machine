@@ -78,10 +78,10 @@ cmds = [
 	    'generation': 1,
 	    'primary': 'node2',
 	    'sync': 'node1',
-	    'async': [ 'node3' ],
+	    'async': [ 'node3', 'node4', 'node5' ],
 	    'initWal': '0/00000000'
 	},
-	'zkpeers': [ 'node1', 'node2' ],
+	'zkpeers': [ 'node1', 'node2', 'node3', 'node4', 'node5' ],
 	'pg': {
 	    'online': true,
 	    'config': {

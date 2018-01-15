@@ -334,12 +334,12 @@ notification and take the appropriate actions defined in this state.
 
 The original `promote` object will not be re-written to the cluster's state when
 a promotion request is acted upon.  When the promotion request is invalid, the
-object will remain in the cluster's state until removed by either the operator
-or a subsequent change in cluster state.
+primary is responsible for removing the promote object from the cluster state
+after finding it to be invalid.
 
 The cluster will never act on a promotion request where the current time is
-greater than that in the `promote.time`, or in the case where any other of the
-properties do not match the current state of the cluster (e.g. if
+greater than that in the `promote.expireTime`, or in the case where any other of
+the properties do not match the current state of the cluster (e.g. if
 `promote.generation` doesn't match `clusterState.generation`).  This has the
 effect of protecting the cluster from acting on a promotion request where there
 might have been a natural takeover in the time between when the operator was
@@ -406,7 +406,7 @@ object.  Its properties are expected to be as follows:
 * `generation` (integer): generation of the cluster that the promotion is taking
   place in
 * `expireTime` (string): time that a promotion must happen within in the format
-  that jsprim's `parseDateTime` method will accept
+  of an ISO 8601 timestamp
 
 ### pg config
 

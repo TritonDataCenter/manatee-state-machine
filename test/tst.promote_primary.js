@@ -22,7 +22,7 @@ ignoredState = {
 	'generation': 2,
 	'primary': 'node1',
 	'sync': 'node3',
-	'async': [ 'node5', 'node2', 'node6', 'node4' ],
+	'async': [ 'node4', 'node2', 'node6', 'node5' ],
 	'initWal': '0/0000000a'
     },
     'activeNodes': activeNodes
@@ -61,7 +61,7 @@ cmds = [
 	    'generation': 2,
 	    'primary': 'node1',
 	    'sync': 'node3',
-	    'async': [ 'node4', 'node5', 'node6', 'node2' ],
+	    'async': [ 'node2', 'node4', 'node5', 'node6' ],
 	    'initWal': '0/0000000a'
 	},
 	'activeNodes': activeNodes
@@ -69,7 +69,7 @@ cmds = [
 
     { 'cmd': 'echo', 'args': [ 'test: promote last async' ] },
     { 'cmd': 'promote', 'args': [ {
-	'id': 'node2',
+	'id': 'node6',
 	'role': 'async',
 	'asyncIndex': 3,
 	'generation': 2,
@@ -80,7 +80,7 @@ cmds = [
 	    'generation': 2,
 	    'primary': 'node1',
 	    'sync': 'node3',
-	    'async': [ 'node4', 'node5', 'node2', 'node6' ],
+	    'async': [ 'node2', 'node4', 'node6', 'node5' ],
 	    'initWal': '0/0000000a'
 	},
 	'activeNodes': activeNodes
@@ -88,7 +88,7 @@ cmds = [
 
     { 'cmd': 'echo', 'args': [ 'test: promote second async' ] },
     { 'cmd': 'promote', 'args': [ {
-	'id': 'node5',
+	'id': 'node4',
 	'role': 'async',
 	'asyncIndex': 1,
 	'generation': 2,
@@ -99,7 +99,7 @@ cmds = [
 	    'generation': 2,
 	    'primary': 'node1',
 	    'sync': 'node3',
-	    'async': [ 'node5', 'node2', 'node6', 'node4' ],
+	    'async': [ 'node4', 'node2', 'node6', 'node5' ],
 	    'initWal': '0/0000000a'
 	},
 	'activeNodes': activeNodes
@@ -120,7 +120,7 @@ cmds = [
 	'role': 'async',
 	'asyncIndex': 2,
 	'generation': 2,
-	'expireTime': mod_jsprim.iso8601(new Date())
+	'expireTime': mod_jsprim.iso8601(new Date('2010-01-01T00:00:00.000Z'))
     } ] },
     { 'cmd': 'zk', 'check': ignoredState, 'wait': 300 },
 
