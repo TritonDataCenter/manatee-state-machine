@@ -309,6 +309,42 @@ The primary will come up as primary, see that the cluster must be transitioning
 to normal mode, and declare a new generation with the newly-deployed peer as the
 sync.  After that, the cluster behaves like a normal cluster.
 
+## Planned promotions
+
+A topology change in Manatee takes place when the cluster determines that a peer
+has gone missing and another peer is available to takeover in that role.  This
+is done by watching for changes to the active peers (i.e. the presence of their
+ephemeral nodes in ZooKeeper), but depending on ZooKeeper configuration this
+could be a lengthy period of time before the cluster notices.  For situations
+where a known topology change is going to happen (e.g. when upgrading the
+cluster), Manatee will watch for a special object in ZooKeeper and proactively
+take actions on the request, instead of waiting for a timeout of the applicable
+ephemeral node.
+
+This object is named `promote` in the cluster's state and is described below in
+the "Data structures" section.  When an operator puts this object, each peer in
+the cluster will get a "clusterStateChange" event and, as part of its evaluation
+of this state, validate the promotion request against the current state of the
+cluster.  If this request is invalid, the request is ignored and a message
+logged.  If this request is valid, the primary (or in the event of a deposition
+of the primary, the sync) will put a new state object into ZooKeeper reflecting
+the intended state of the cluster (e.g. new primary required, async chain
+changes).  Each peer will then receive a subsequent "clusterStateChange"
+notification and take the appropriate actions defined in this state.
+
+The original `promote` object will not be re-written to the cluster's state when
+a promotion request is acted upon.  When the promotion request is invalid, the
+primary is responsible for removing the promote object from the cluster state
+after finding it to be invalid.
+
+The cluster will never act on a promotion request where the current time is
+greater than that in the `promote.expireTime`, or in the case where any other of
+the properties do not match the current state of the cluster (e.g. if
+`promote.generation` doesn't match `clusterState.generation`).  This has the
+effect of protecting the cluster from acting on a promotion request where there
+might have been a natural takeover in the time between when the operator was
+building this object and putting it into ZooKeeper.
+
 # Implementation notes
 
 ## Data structures
@@ -356,6 +392,21 @@ comparing the identities of two peers, only the `id` field is used.**
   versions.
 * `oneNodeWriteMode`: if true, then the cluster is configured for one-node-write
   mode.  See above for details.
+* `promote`: an optional object containing the intent of an operator-initiated
+  promotion for an individual peer.  See below for details.
+
+#### clusterState.promote
+
+`promote` is an optional object that is validated separately to the clusterState
+object.  Its properties are expected to be as follows:
+
+* `id` (string): id of the peer to be promoted (see "peer identifier")
+* `role` (string): current role of the peer to be promoted
+* `asyncIndex` (integer): position in the async chain (if "role" is "async")
+* `generation` (integer): generation of the cluster that the promotion is taking
+  place in
+* `expireTime` (string): time that a promotion must happen within in the format
+  of an ISO 8601 timestamp
 
 ### pg config
 
